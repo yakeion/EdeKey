@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EdeKey - Bộ gõ tiếng Ê Đê</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Be Vietnam Pro & JetBrains Mono for UI Chrome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Be Vietnam Pro"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                        serif: ['"Times New Roman"', 'Times', 'serif'],
+                    },
+                    colors: {
+                        forest: {
+                            50: '#f4f7f5',
+                            100: '#eef4f0',
+                            200: '#e8f1eb',
+                            300: '#d1e3d7',
+                            400: '#a3c7af',
+                            600: '#247543',
+                            700: '#1b5e35',
+                            800: '#185732',
+                            900: '#113e23',
+                        },
+                        ink: {
+                            900: '#1b2432',
+                            700: '#4a5568',
+                            500: '#718096',
+                            400: '#94a3b8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        html, body {
+            background-color: #f4f7f5;
+            color: #1b2432;
+            overflow-x: hidden;
+            max-width: 100vw;
+        }
+
+        /* Strictly enforce Times New Roman for Sandbox and Ede phonetic glyphs */
+        .font-ede-times {
+            font-family: 'Times New Roman', Times, serif !important;
+        }
+
+        #ede-editor {
+            font-family: 'Times New Roman', Times, serif !important;
+            font-size: 1.35rem;
+            line-height: 1.75;
+        }
+
+        @media (min-width: 640px) {
+            #ede-editor {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Clean white card surface */
+        .surface-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8e4;
+            border-radius: 24px;
+            box-shadow: 0 4px 20px -2px rgba(27, 94, 53, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        /* Character rule tile */
+        .char-tile {
+            background-color: #ffffff;
+            border: 1px solid #e2e8e4;
+            border-radius: 16px;
+            transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .char-tile:hover {
+            border-color: #1b5e35;
+            box-shadow: 0 6px 16px -4px rgba(27, 94, 53, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .char-tile:active {
+            transform: scale(0.97);
+            background-color: #f4f7f5;
+        }
+
+        /* Sliding pill indicator inside 3-tab bar */
+        .tab-pill-indicator {
+            position: absolute;
+            top: 6px;
+            bottom: 6px;
+            left: 6px;
+            width: calc((100% - 12px) / 3);
+            border-radius: 9999px;
+            background-color: #1b5e35;
+            box-shadow: 0 3px 10px -2px rgba(27, 94, 53, 0.35);
+            transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform;
+            z-index: 0;
+        }
+
+        /* Smooth 3-panel horizontal slide track */
+        .slide-viewport {
+            overflow: hidden;
+            width: 100%;
+            transition: height 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+            touch-action: pan-y;
+        }
+
+        .slide-track {
+            display: flex;
+            width: 300%;
+            align-items: flex-start;
+            transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform;
+        }
+
+        .slide-track.is-dragging {
+            transition: none;
+        }
+
+        .slide-page {
+            width: 33.333333%;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        /* Toast animation */
+        @keyframes slideUpFade {
+            from {
+                opacity: 0;
+                transform: translate(-50%, 16px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+        .toast-enter {
+            animation: slideUpFade 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center antialiased selection:bg-[#1b5e35] selection:text-white">
+
+    <!-- Main Centered Container -->
+    <div class="w-full max-w-2xl px-3.5 sm:px-6 pt-5 pb-12 space-y-5 box-border">
+
+        <!-- 1. TOP PILL BANNER & HEADER -->
+        <header class="text-center space-y-3">
+            <div class="w-full bg-[#1b5e35] text-white font-extrabold text-base sm:text-3xl tracking-wider uppercase py-3.5 px-4 sm:px-6 rounded-full shadow-md shadow-[#1b5e35]/15">
+                EDEKEY - KČOH BŎH HRĂ ÊĐÊ
+            </div>
+
+            <div class="pt-1 space-y-1">
+                <h1 class="text-lg sm:text-2xl font-extrabold text-[#1b2432] tracking-tight">
+                    Bộ Gõ & Quy Tắc Tiếng Êđê
+                </h1>
+                <p class="text-xs sm:text-sm text-[#718096] font-medium">
+                    Gõ thử trực tiếp • Chạm vào thẻ quy tắc để chèn hoặc sao chép
+                </p>
+            </div>
+        </header>
+
+        <!-- SMOOTH 3-TAB MENU: Khung gõ | Download | Liên hệ -->
+        <nav aria-label="Menu chuyển đổi chức năng" class="relative bg-[#e8f1eb] p-1.5 rounded-full w-full shadow-inner border border-[#d1e3d7]/80 select-none">
+            <div id="tab-pill-indicator" class="tab-pill-indicator" aria-hidden="true"></div>
+
+            <div class="relative z-10 grid grid-cols-3 items-center">
+                <button type="button" id="main-tab-btn-editor" onclick="switchMainTab('editor')"
+                    class="py-2 px-1.5 sm:px-3 rounded-full text-xs sm:text-sm font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 text-white min-w-0">
+                    <i data-lucide="keyboard" class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0"></i>
+                    <span class="truncate">Khung gõ</span>
+                </button>
+
+                <button type="button" id="main-tab-btn-download" onclick="switchMainTab('download')"
+                    class="py-2 px-1.5 sm:px-3 rounded-full text-xs sm:text-sm font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 text-[#1b5e35] hover:text-[#113e23] min-w-0">
+                    <i data-lucide="download" class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0"></i>
+                    <span class="truncate">Download</span>
+                </button>
+
+                <button type="button" id="main-tab-btn-contact" onclick="switchMainTab('contact')"
+                    class="py-2 px-1.5 sm:px-3 rounded-full text-xs sm:text-sm font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 text-[#1b5e35] hover:text-[#113e23] min-w-0">
+                    <i data-lucide="message-circle" class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0"></i>
+                    <span class="truncate">Liên hệ</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- SLIDE VIEWPORT -->
+        <div id="slide-viewport" class="slide-viewport">
+            <div id="slide-track" class="slide-track">
+
+                <!-- 2. SLIDE 1: MẶC ĐỊNH NHƯ BAN ĐẦU (KHUNG GÕ THỬ + BẢNG QUY TẮC GÕ) -->
+                <div class="slide-page space-y-6">
+                    <div id="main-panel-editor" class="space-y-6">
+                        <!-- Khung gõ thử trực tiếp -->
+                        <section aria-label="Khung gõ thử trực tiếp" class="surface-card p-4 sm:p-6 space-y-4">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <h2 class="text-base sm:text-lg font-extrabold text-[#1b2432]">
+                                    Khung gõ thử trực tiếp
+                                </h2>
+
+                                <div class="flex items-center gap-2">
+                                    <span class="px-3 py-1 rounded-full bg-[#e8f1eb] text-[#1b5e35] text-xs font-bold tracking-tight">
+                                        Font: Times New Roman
+                                    </span>
+
+                                    <button id="toggle-ime-btn" type="button" onclick="toggleIME()"
+                                        class="px-3 py-1 rounded-full text-xs font-bold bg-[#1b5e35] text-white hover:bg-[#185732] transition-colors flex items-center gap-1.5 shadow-xs"
+                                        title="Bật hoặc tắt tự động chuyển đổi ký tự EdeKey">
+                                        <span id="ime-dot" class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+                                        <span id="ime-status-text">Bộ gõ: BẬT</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-[#718096] bg-[#f9fbfa] border border-[#eef4f0] rounded-xl px-3 py-2">
+                                <strong>Lưu ý:</strong> Nên tắt bộ gõ tiếng Việt trên thiết bị để tránh xung đột khi gõ phím <code class="font-mono text-[#1b5e35]">w</code>, <code class="font-mono text-[#1b5e35]">q</code>, <code class="font-mono text-[#1b5e35]">x</code>.
+                            </p>
+
+                            <div class="relative">
+                                <textarea id="ede-editor" rows="4"
+                                    placeholder="Gõ thử tiếng Êđê tại đây (ví dụ: aa → â, bb → ƀ, cc → č, uu → ŭ, ex → ê̌, oqw → ơ̆)..."
+                                    class="font-ede-times w-full p-4 rounded-2xl bg-[#f9fbfa] border border-[#e2e8e4] text-[#1b2432] placeholder:text-[#94a3b8] placeholder:text-base focus:bg-white focus:border-[#1b5e35] focus:ring-2 focus:ring-[#1b5e35]/15 focus:outline-none resize-y transition-all"></textarea>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-2 text-xs text-[#718096] px-1">
+                                <div id="live-feedback" class="flex items-center gap-1.5 min-h-[22px] min-w-0">
+                                    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-[#1b5e35] shrink-0"></i>
+                                    <span class="truncate">Gõ lặp phím để hoàn tác (vd: <code class="font-mono text-[#1b5e35]">aa</code> &rarr; <span class="font-ede-times font-bold text-sm text-[#1b2432]">â</span> &rarr; <code class="font-mono">aa</code>)</span>
+                                </div>
+                                <span class="font-mono text-[11px] text-[#94a3b8] shrink-0"><span id="char-count">0</span> ký tự</span>
+                            </div>
+
+                            <div class="bg-[#eef4f0] p-2.5 rounded-2xl space-y-2">
+                                <div class="flex items-center justify-between px-1">
+                                    <span class="text-[11px] font-bold uppercase tracking-wider text-[#1b5e35]">
+                                        Chèn nhanh ký tự Êđê
+                                    </span>
+                                    <button type="button" id="caps-btn" onclick="toggleQuickCaps()"
+                                        class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white text-[#1b5e35] border border-[#d1e3d7] hover:bg-[#1b5e35] hover:text-white transition-colors">
+                                        <span id="caps-label">Chữ thường (a)</span>
+                                    </button>
+                                </div>
+                                <div id="quick-char-bar" class="grid grid-cols-6 sm:grid-cols-9 gap-1.5"></div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                <div class="flex items-center gap-2">
+                                    <button type="button" onclick="copyEditorText()"
+                                        class="px-4 py-2 rounded-full text-xs sm:text-sm font-bold bg-[#1b5e35] text-white hover:bg-[#185732] active:scale-95 transition-all flex items-center gap-1.5 shadow-xs">
+                                        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                        <span>Sao chép</span>
+                                    </button>
+
+                                    <button type="button" onclick="insertRandomSample()"
+                                        class="px-3.5 py-2 rounded-full text-xs sm:text-sm font-bold bg-[#e8f1eb] text-[#1b5e35] hover:bg-[#d1e3d7] active:scale-95 transition-all flex items-center gap-1.5">
+                                        <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                                        <span>Chèn câu mẫu</span>
+                                    </button>
+                                </div>
+
+                                <button type="button" onclick="clearEditorText()"
+                                    class="px-3.5 py-2 rounded-full text-xs sm:text-sm font-semibold text-[#718096] hover:text-red-600 hover:bg-red-50 active:scale-95 transition-all flex items-center gap-1">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    <span>Xóa</span>
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- Bảng quy tắc gõ (giữ nguyên vị trí mặc định bên dưới) -->
+                        <section aria-label="Bảng quy tắc gõ" class="surface-card p-4 sm:p-6 space-y-5">
+                            <div class="flex items-center justify-between gap-2">
+                                <h2 class="text-lg sm:text-xl font-extrabold text-[#1b2432]">
+                                    Bảng quy tắc gõ
+                                </h2>
+                                <span id="rule-count-badge" class="px-3.5 py-1 rounded-full bg-[#e8f1eb] text-[#1b5e35] text-xs font-bold shrink-0">
+                                    18 quy tắc
+                                </span>
+                            </div>
+
+                            <div class="bg-[#eef4f0] p-1.5 rounded-2xl grid grid-cols-3 gap-1.5">
+                                <button type="button" onclick="setActiveTab('all')" data-tab="all"
+                                    class="seg-tab py-2.5 px-2 rounded-xl text-center transition-all bg-[#1b5e35] text-white shadow-sm">
+                                    <div class="font-ede-times font-bold text-base sm:text-lg leading-tight">Aa</div>
+                                    <div class="text-[11px] sm:text-xs font-semibold opacity-95 mt-0.5">Tất cả</div>
+                                </button>
+
+                                <button type="button" onclick="setActiveTab('basic')" data-tab="basic"
+                                    class="seg-tab py-2.5 px-2 rounded-xl text-center transition-all text-[#5a6b60] hover:text-[#1b2432]">
+                                    <div class="font-ede-times font-bold text-base sm:text-lg leading-tight">AA</div>
+                                    <div class="text-[11px] sm:text-xs font-semibold mt-0.5">Gõ đúp &amp; Cơ bản</div>
+                                </button>
+
+                                <button type="button" onclick="setActiveTab('diacritics')" data-tab="diacritics"
+                                    class="seg-tab py-2.5 px-2 rounded-xl text-center transition-all text-[#5a6b60] hover:text-[#1b2432]">
+                                    <div class="font-ede-times font-bold text-base sm:text-lg leading-tight">Ê̌ Ơ̆</div>
+                                    <div class="text-[11px] sm:text-xs font-semibold mt-0.5">Mũ &amp; Râu (w,q,x)</div>
+                                </button>
+                            </div>
+
+                            <div class="relative">
+                                <i data-lucide="search" class="w-4 h-4 text-[#94a3b8] absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                                <input type="text" id="rule-search" oninput="renderRuleTiles()"
+                                    placeholder="Tìm nhanh phím gõ hoặc chữ cái (vd: bb, oqw, ƀ, ê̌...)"
+                                    class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#f9fbfa] border border-[#e2e8e4] text-xs sm:text-sm text-[#1b2432] placeholder:text-[#94a3b8] focus:bg-white focus:border-[#1b5e35] focus:outline-none transition-colors">
+                            </div>
+
+                            <div id="rules-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 sm:gap-3"></div>
+
+                            <div id="empty-search" class="hidden text-center py-8 text-sm text-[#718096]">
+                                Không tìm thấy quy tắc phù hợp. Hãy thử từ khóa khác.
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- 3. SLIDE 2: DOWNLOAD APK -->
+                <div class="slide-page">
+                    <section id="main-panel-download" aria-label="Tải ứng dụng EdeKey" class="surface-card p-4 sm:p-6 space-y-5">
+                        <div class="flex items-center justify-between gap-2">
+                            <h2 class="text-base sm:text-xl font-extrabold text-[#1b2432]">
+                                Tải ứng dụng EdeKey
+                            </h2>
+                            <span class="px-3 py-1 rounded-full bg-[#e8f1eb] text-[#1b5e35] text-xs font-bold shrink-0">
+                                Android
+                            </span>
+                        </div>
+
+                        <div class="rounded-2xl border border-[#d1e3d7] bg-[#f4f7f5] p-5 sm:p-6 text-center space-y-3">
+                            <div class="mx-auto w-20 h-20 flex items-center justify-center">
+                                <img src="https://drive.google.com/thumbnail?id=1W8tqpi1LtR7ezY0IxI5OFDm1hzU-5oq2&amp;sz=w512" alt="EdeKey App Icon" class="w-full h-full object-contain rounded-2xl">
+                            </div>
+                            <div class="space-y-1">
+                                <h3 class="text-lg sm:text-xl font-extrabold text-[#1b2432]">EdeKey – Bộ gõ tiếng Êđê</h3>
+                                <p class="text-sm text-[#718096]">Ứng dụng Android • Tệp cài đặt APK</p>
+                            </div>
+                            <a href="https://drive.google.com/uc?export=download&amp;id=1KXhYWCT4vDKpY6_hfq9YwCZ5bpm56Clw" target="_blank" rel="noopener"
+                                class="w-full p-4 rounded-2xl bg-[#1b5e35] text-white hover:bg-[#185732] active:scale-[0.99] transition-all flex items-center justify-center gap-3 shadow-sm font-bold">
+                                <i data-lucide="download" class="w-6 h-6 shrink-0"></i>
+                                <span class="text-base sm:text-lg">Tải ứng dụng EdeKey (.APK)</span>
+                            </a>
+                            <p class="text-xs text-[#718096]">Dành cho điện thoại Android. Sau khi tải, mở tệp APK để cài đặt ứng dụng.</p>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 4. SLIDE 3: CONTACT TAB -->
+                <div class="slide-page">
+                    <section id="main-panel-contact" aria-label="Liên hệ và góp ý" class="surface-card p-4 sm:p-6 space-y-5">
+                        <div class="flex items-center justify-between gap-2">
+                            <h2 class="text-lg sm:text-xl font-extrabold text-[#1b2432]">
+                                Liên hệ &amp; Góp ý EdeKey
+                            </h2>
+                            <span class="px-3 py-1 rounded-full bg-[#e8f1eb] text-[#1b5e35] text-xs font-bold">
+                                Klei Êđê
+                            </span>
+                        </div>
+
+                        <div class="bg-[#f4f7f5] border border-[#e2e8e4] rounded-2xl p-4 space-y-1">
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-[#1b5e35]">
+                                Tác giả / Người phát triển
+                            </div>
+                            <div class="font-ede-times text-xl font-bold text-[#1b2432]">
+                                Y Anh Êñuôl
+                            </div>
+                            <p class="text-xs text-[#718096]">
+                                Hỗ trợ chuẩn hóa bộ gõ chữ viết tiếng Êđê (2019 – 2026) • Email: <span class="font-mono text-[#1b5e35]">yanhenuol03@gmail.com</span>
+                            </p>
+                        </div>
+
+                        <form id="contact-form" onsubmit="handleContactSubmit(event)" class="space-y-3.5">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="space-y-1">
+                                    <label for="contact-name" class="block text-xs font-bold text-[#1b2432]">Họ và tên</label>
+                                    <input type="text" id="contact-name" required placeholder="Tên của bạn..."
+                                        class="w-full px-3.5 py-2.5 rounded-xl bg-[#f9fbfa] border border-[#e2e8e4] text-sm text-[#1b2432] focus:bg-white focus:border-[#1b5e35] focus:outline-none transition-colors">
+                                </div>
+                                <div class="space-y-1">
+                                    <label for="contact-topic" class="block text-xs font-bold text-[#1b2432]">Chủ đề</label>
+                                    <select id="contact-topic"
+                                        class="w-full px-3.5 py-2.5 rounded-xl bg-[#f9fbfa] border border-[#e2e8e4] text-sm text-[#1b2432] focus:bg-white focus:border-[#1b5e35] focus:outline-none transition-colors">
+                                        <option value="Góp ý quy tắc gõ">Góp ý quy tắc gõ</option>
+                                        <option value="Báo lỗi hiển thị / ký tự">Báo lỗi hiển thị / ký tự</option>
+                                        <option value="Đề xuất tính năng mới">Đề xuất tính năng mới</option>
+                                        <option value="Hợp tác / Tài liệu Êđê">Hợp tác / Tài liệu Êđê</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label for="contact-message" class="block text-xs font-bold text-[#1b2432]">Nội dung góp ý</label>
+                                <textarea id="contact-message" rows="3" required
+                                    placeholder="Nhập lời nhắn hoặc góp ý của bạn tại đây..."
+                                    class="font-ede-times w-full p-3.5 rounded-xl bg-[#f9fbfa] border border-[#e2e8e4] text-base text-[#1b2432] focus:bg-white focus:border-[#1b5e35] focus:outline-none resize-y transition-colors"></textarea>
+                            </div>
+
+                            <div id="contact-status" class="hidden text-xs font-semibold px-3.5 py-2.5 rounded-xl text-center"></div>
+
+                            <!-- Nút Gửi nằm chính giữa -->
+                            <div class="pt-2 flex justify-center">
+                                <button type="submit" id="contact-submit-btn"
+                                    class="min-w-[160px] px-8 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-[#1b5e35] text-white hover:bg-[#185732] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xs disabled:opacity-60 disabled:pointer-events-none">
+                                    <i data-lucide="send" class="w-4 h-4"></i>
+                                    <span id="contact-submit-text">Gửi</span>
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Minimalist Footer -->
+        <footer class="text-center text-xs text-[#718096] pt-2">
+            <p>EdeKey • Hỗ trợ chuẩn hóa bộ gõ chữ viết tiếng Êđê (Klei Êđê) được tạo bởi: <strong>Y Anh Êñuôl</strong><br> © 2019-2026 </p>
+        </footer>
+    </div>
+
+    <!-- Floating Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden pointer-events-none">
+        <div class="bg-[#1b2432] text-white px-4 py-2.5 rounded-full shadow-lg flex items-center gap-2 text-xs sm:text-sm font-medium whitespace-nowrap">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="toast-message">Đã chèn ký tự</span>
+        </div>
+    </div>
+
+    <script>
+        const CONTACT_EMAIL = 'yanhenuol03@gmail.com';
+        const FORMSUBMIT_AJAX_URL = `https://formsubmit.co/ajax/${CONTACT_EMAIL}`;
+
+        const EDE_RULES = [
+            { id: 'aa', group: 'basic', seq: 'aa', lower: 'â', upper: 'Â', name: 'â mũ xuôi' },
+            { id: 'bb', group: 'basic', seq: 'bb', lower: 'ƀ', upper: 'Ƀ', name: 'ƀ gạch ngang' },
+            { id: 'cc', group: 'basic', seq: 'cc', lower: 'č', upper: 'Č', name: 'č mũ ngược' },
+            { id: 'dd', group: 'basic', seq: 'dd', lower: 'đ', upper: 'Đ', name: 'đ gạch ngang' },
+            { id: 'ee', group: 'basic', seq: 'ee', lower: 'ê', upper: 'Ê', name: 'ê mũ xuôi' },
+            { id: 'nn', group: 'basic', seq: 'nn', lower: 'ñ', upper: 'Ñ', name: 'ñ dấu ngã' },
+            { id: 'oo', group: 'basic', seq: 'oo', lower: 'ô', upper: 'Ô', name: 'ô mũ xuôi' },
+            { id: 'uu', group: 'basic', seq: 'uu', lower: 'ŭ', upper: 'Ŭ', name: 'ŭ trăng khuyết' },
+            { id: 'ii', group: 'basic', seq: 'ii', lower: 'ĭ', upper: 'Ĭ', name: 'ĭ trăng khuyết' },
+
+            { id: 'aw', group: 'diacritics', seq: 'aw', lower: 'ă', upper: 'Ă', name: 'ă trăng khuyết' },
+            { id: 'ew', group: 'diacritics', seq: 'ew', lower: 'ĕ', upper: 'Ĕ', name: 'ĕ trăng khuyết' },
+            { id: 'ow', group: 'diacritics', seq: 'ow', lower: 'ŏ', upper: 'Ŏ', name: 'ŏ trăng khuyết' },
+            { id: 'oq', group: 'diacritics', seq: 'oq', lower: 'ơ', upper: 'Ơ', name: 'ơ dấu móc' },
+            { id: 'uq', group: 'diacritics', seq: 'uq', lower: 'ư', upper: 'Ư', name: 'ư dấu móc' },
+            { id: 'ex', group: 'diacritics', seq: 'ex', lower: 'ê̌', upper: 'Ê̌', name: 'ê̌ mũ ngược' },
+            { id: 'ox', group: 'diacritics', seq: 'ox', lower: 'ô̌', upper: 'Ô̌', name: 'ô̌ mũ ngược' },
+            { id: 'oqw', group: 'diacritics', seq: 'oqw', lower: 'ơ̆', upper: 'Ơ̆', name: 'ơ̆ móc trăng' },
+            { id: 'uqw', group: 'diacritics', seq: 'uqw', lower: 'ư̆', upper: 'Ư̆', name: 'ư̆ móc trăng' }
+        ];
+
+        const SAMPLE_SENTENCES = [
+            'Pô čih mkra: Y Anh Êñuôl',
+            'Ênguôt êdi mi kyâo ăh!',
+            'Ƀuôn Ama Thuôt.',
+            'Aduôn hăng Aê dôk ti sang.'
+        ];
+        let sampleIndex = 0;
+
+        let isIMEEnabled = true;
+        let isQuickCaps = false;
+        let activeTab = 'all';
+        let currentMainTab = 'editor';
+        let toastTimer = null;
+
+        const TAB_ORDER = ['editor', 'download', 'contact'];
+
+        const IME_MAP = {
+            'aa': 'â', 'Aa': 'Â', 'AA': 'Â', 'âa': 'aa', 'Âa': 'Aa', 'ÂA': 'AA',
+            'aw': 'ă', 'Aw': 'Ă', 'AW': 'Ă', 'ăw': 'aw', 'Ăw': 'Aw', 'ĂW': 'AW',
+            'bb': 'ƀ', 'Bb': 'Ƀ', 'BB': 'Ƀ', 'ƀb': 'bb', 'Ƀb': 'Bb', 'ɃB': 'BB',
+            'cc': 'č', 'Cc': 'Č', 'CC': 'Č', 'čc': 'cc', 'Čc': 'Cc', 'ČC': 'CC',
+            'dd': 'đ', 'Dd': 'Đ', 'DD': 'Đ', 'đd': 'dd', 'Đd': 'Dd', 'ĐD': 'DD',
+            'ee': 'ê', 'Ee': 'Ê', 'EE': 'Ê', 'êe': 'ee', 'Êe': 'Ee', 'ÊE': 'EE',
+            'nn': 'ñ', 'Nn': 'Ñ', 'NN': 'Ñ', 'ñn': 'nn', 'Ñn': 'Nn', 'ÑN': 'NN',
+            'oo': 'ô', 'Oo': 'Ô', 'OO': 'Ô', 'ôo': 'oo', 'Ôo': 'Oo', 'ÔO': 'OO',
+            'uu': 'ŭ', 'Uu': 'Ŭ', 'UU': 'Ŭ', 'ŭu': 'uu', 'Ŭu': 'Uu', 'ŬU': 'UU',
+            'ii': 'ĭ', 'Ii': 'Ĭ', 'II': 'Ĭ', 'ĭi': 'ii', 'Ĭi': 'Ii', 'ĬI': 'II',
+            'ew': 'ĕ', 'Ew': 'Ĕ', 'EW': 'Ĕ', 'ĕw': 'ew', 'Ĕw': 'Ew', 'ĔW': 'EW',
+            'ow': 'ŏ', 'Ow': 'Ŏ', 'OW': 'Ŏ', 'ŏw': 'ow', 'Ŏw': 'Ow', 'ŎW': 'OW',
+            'oq': 'ơ', 'Oq': 'Ơ', 'OQ': 'Ơ', 'ơq': 'oq', 'Ơq': 'Oq', 'ƠQ': 'OQ',
+            'uq': 'ư', 'Uq': 'Ư', 'UQ': 'Ư', 'ưq': 'uq', 'Ưq': 'Uq', 'ƯQ': 'UQ',
+            'ex': 'ê̌', 'Ex': 'Ê̌', 'EX': 'Ê̌', 'ê̌x': 'ex', 'Ê̌x': 'Ex', 'Ê̌X': 'EX',
+            'ox': 'ô̌', 'Ox': 'Ô̌', 'OX': 'Ô̌', 'ô̌x': 'ox', 'Ô̌x': 'Ox', 'Ô̌X': 'OX',
+            'ơw': 'ơ̆', 'Ơw': 'Ơ̆', 'ƠW': 'Ơ̆', 'ơ̆w': 'ơw', 'Ơ̆w': 'Ơw', 'Ơ̆W': 'ƠW',
+            'ưw': 'ư̆', 'Ưw': 'Ư̆', 'ƯW': 'Ư̆', 'ư̆w': 'ưw', 'Ư̆w': 'Ưw', 'Ư̆W': 'ƯW'
+        };
+
+        const editorEl = document.getElementById('ede-editor');
+        const charCountEl = document.getElementById('char-count');
+        const liveFeedbackEl = document.getElementById('live-feedback');
+        const slideTrack = document.getElementById('slide-track');
+        const slideViewport = document.getElementById('slide-viewport');
+        const pillIndicator = document.getElementById('tab-pill-indicator');
+
+        function init() {
+            renderQuickCharBar();
+            renderRuleTiles();
+            syncDownloadPreview();
+            lucide.createIcons();
+            setupSwipeGestures();
+            setupPanelObservers();
+
+            editorEl.addEventListener('input', handleEditorInput);
+            editorEl.addEventListener('change', syncDownloadPreview);
+            window.addEventListener('resize', updateViewportHeight);
+            requestAnimationFrame(updateViewportHeight);
+        }
+
+        function setupPanelObservers() {
+            if (typeof ResizeObserver === 'undefined') return;
+            const ro = new ResizeObserver(() => updateViewportHeight());
+            TAB_ORDER.forEach(name => {
+                const panel = document.getElementById(`main-panel-${name}`);
+                if (panel) ro.observe(panel);
+            });
+        }
+
+        function updateViewportHeight() {
+            const activePanel = document.getElementById(`main-panel-${currentMainTab}`);
+            if (activePanel && slideViewport) {
+                slideViewport.style.height = activePanel.offsetHeight + 'px';
+            }
+        }
+
+        function switchMainTab(tabName) {
+            const index = TAB_ORDER.indexOf(tabName);
+            if (index === -1) return;
+            currentMainTab = tabName;
+
+            slideTrack.classList.remove('is-dragging');
+            slideTrack.style.transform = `translateX(-${index * 33.333333}%)`;
+            if (pillIndicator) {
+                pillIndicator.style.transform = `translateX(${index * 100}%)`;
+            }
+
+            TAB_ORDER.forEach(name => {
+                const btn = document.getElementById(`main-tab-btn-${name}`);
+                if (!btn) return;
+                if (name === tabName) {
+                    btn.classList.remove('text-[#1b5e35]', 'hover:text-[#113e23]');
+                    btn.classList.add('text-white');
+                } else {
+                    btn.classList.remove('text-white');
+                    btn.classList.add('text-[#1b5e35]', 'hover:text-[#113e23]');
+                }
+            });
+
+            if (tabName === 'download') {
+                syncDownloadPreview();
+            }
+
+            requestAnimationFrame(updateViewportHeight);
+        }
+
+        function setupSwipeGestures() {
+            let startX = 0;
+            let startY = 0;
+            let deltaX = 0;
+            let isHorizontalSwipe = false;
+
+            slideViewport.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1) return;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                deltaX = 0;
+                isHorizontalSwipe = false;
+            }, { passive: true });
+
+            slideViewport.addEventListener('touchmove', (e) => {
+                if (e.touches.length !== 1) return;
+                const dx = e.touches[0].clientX - startX;
+                const dy = e.touches[0].clientY - startY;
+
+                if (!isHorizontalSwipe) {
+                    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+                        isHorizontalSwipe = true;
+                        slideTrack.classList.add('is-dragging');
+                    } else {
+                        return;
+                    }
+                }
+
+                deltaX = dx;
+                const currentIndex = TAB_ORDER.indexOf(currentMainTab);
+                const viewportWidth = slideViewport.offsetWidth || 1;
+                const basePercent = -(currentIndex * 33.333333);
+                const dragPercent = (deltaX / viewportWidth) * 33.333333;
+
+                let targetPercent = basePercent + dragPercent;
+                if (targetPercent > 0) targetPercent *= 0.3;
+                if (targetPercent < -66.666666) targetPercent = -66.666666 + (targetPercent + 66.666666) * 0.3;
+
+                slideTrack.style.transform = `translateX(${targetPercent}%)`;
+            }, { passive: true });
+
+            slideViewport.addEventListener('touchend', () => {
+                if (!isHorizontalSwipe) return;
+                slideTrack.classList.remove('is-dragging');
+
+                const currentIndex = TAB_ORDER.indexOf(currentMainTab);
+                const threshold = 55;
+
+                if (deltaX < -threshold && currentIndex < TAB_ORDER.length - 1) {
+                    switchMainTab(TAB_ORDER[currentIndex + 1]);
+                } else if (deltaX > threshold && currentIndex > 0) {
+                    switchMainTab(TAB_ORDER[currentIndex - 1]);
+                } else {
+                    switchMainTab(currentMainTab);
+                }
+            });
+        }
+
+        function handleEditorInput(e) {
+            updateCharCount();
+            syncDownloadPreview();
+            if (!isIMEEnabled) return;
+            if (e.inputType !== 'insertText' || !e.data || e.data.length !== 1) return;
+
+            const cursorPos = editorEl.selectionStart;
+            const text = editorEl.value;
+            const lookbackStart = Math.max(0, cursorPos - 4);
+            const recent = text.slice(lookbackStart, cursorPos);
+
+            for (const [pattern, replacement] of Object.entries(IME_MAP)) {
+                if (recent.endsWith(pattern)) {
+                    const replaceStart = cursorPos - pattern.length;
+                    editorEl.value = text.slice(0, replaceStart) + replacement + text.slice(cursorPos);
+                    const nextPos = replaceStart + replacement.length;
+                    editorEl.setSelectionRange(nextPos, nextPos);
+                    updateCharCount();
+                    syncDownloadPreview();
+
+                    liveFeedbackEl.innerHTML = `
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#e8f1eb] text-[#1b5e35] font-semibold">
+                            <span class="font-mono text-xs">${escapeHTML(pattern)}</span>
+                            <span>&rarr;</span>
+                            <span class="font-ede-times font-bold text-base text-[#1b2432]">${escapeHTML(replacement)}</span>
+                        </span>
+                    `;
+                    break;
+                }
+            }
+        }
+
+        function toggleIME() {
+            isIMEEnabled = !isIMEEnabled;
+            const btn = document.getElementById('toggle-ime-btn');
+            const label = document.getElementById('ime-status-text');
+            const dot = document.getElementById('ime-dot');
+
+            if (isIMEEnabled) {
+                btn.className = 'px-3 py-1 rounded-full text-xs font-bold bg-[#1b5e35] text-white hover:bg-[#185732] transition-colors flex items-center gap-1.5 shadow-xs';
+                label.textContent = 'Bộ gõ: BẬT';
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-300 animate-pulse';
+                showToast('Đã bật bộ gõ tiếng Êđê');
+            } else {
+                btn.className = 'px-3 py-1 rounded-full text-xs font-bold bg-[#eef4f0] text-[#5a6b60] hover:bg-[#e2e8e4] transition-colors flex items-center gap-1.5';
+                label.textContent = 'Bộ gõ: TẮT';
+                dot.className = 'w-2 h-2 rounded-full bg-[#94a3b8]';
+                showToast('Đã tắt bộ gõ tự động');
+            }
+        }
+
+        function renderQuickCharBar() {
+            const bar = document.getElementById('quick-char-bar');
+            bar.innerHTML = EDE_RULES.map(rule => {
+                const glyph = isQuickCaps ? rule.upper : rule.lower;
+                return `
+                    <button type="button"
+                        onclick="insertAndCopy('${glyph}', false)"
+                        title="${rule.seq} → ${glyph} (${rule.name})"
+                        class="py-1.5 px-1 rounded-xl bg-white border border-[#e2e8e4] hover:border-[#1b5e35] active:scale-95 transition-all flex flex-col items-center justify-center shadow-2xs">
+                        <span class="font-ede-times font-bold text-lg text-[#1b2432] leading-none">${glyph}</span>
+                        <span class="font-mono text-[9px] text-[#718096] mt-1">${rule.seq}</span>
+                    </button>
+                `;
+            }).join('');
+            requestAnimationFrame(updateViewportHeight);
+        }
+
+        function toggleQuickCaps() {
+            isQuickCaps = !isQuickCaps;
+            document.getElementById('caps-label').textContent = isQuickCaps ? 'CHỮ HOA (A)' : 'Chữ thường (a)';
+            renderQuickCharBar();
+        }
+
+        function renderRuleTiles() {
+            const query = document.getElementById('rule-search').value.trim().toLowerCase();
+            const grid = document.getElementById('rules-grid');
+            const emptyEl = document.getElementById('empty-search');
+            const badgeEl = document.getElementById('rule-count-badge');
+
+            const filtered = EDE_RULES.filter(rule => {
+                const matchTab = activeTab === 'all' || rule.group === activeTab;
+                const matchQuery = !query ||
+                    rule.seq.includes(query) ||
+                    rule.lower.toLowerCase().includes(query) ||
+                    rule.upper.toLowerCase().includes(query) ||
+                    rule.name.toLowerCase().includes(query);
+                return matchTab && matchQuery;
+            });
+
+            badgeEl.textContent = `${filtered.length} quy tắc`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyEl.classList.remove('hidden');
+                requestAnimationFrame(updateViewportHeight);
+                return;
+            }
+
+            emptyEl.classList.add('hidden');
+            grid.innerHTML = filtered.map(rule => `
+                <button type="button"
+                    onclick="insertAndCopy('${rule.lower}', true)"
+                    class="char-tile p-3 sm:p-3.5 flex flex-col items-center justify-between gap-2 text-center">
+                    
+                    <div class="font-ede-times flex items-baseline justify-center gap-1.5 pt-1">
+                        <span class="text-2xl sm:text-3xl font-bold text-[#1b2432]">${rule.upper}</span>
+                        <span class="text-xl sm:text-2xl font-normal text-[#94a3b8]">${rule.lower}</span>
+                    </div>
+
+                    <div class="w-full py-1 px-2 rounded-lg bg-[#f4f7f5] group-hover:bg-[#e8f1eb] flex items-center justify-center gap-1 text-[11px] sm:text-xs font-mono font-bold text-[#1b5e35]">
+                        <span>${rule.seq}</span>
+                        <span class="text-[#94a3b8]">&rarr;</span>
+                        <span class="font-ede-times text-sm text-[#1b2432]">${rule.lower}</span>
+                    </div>
+                </button>
+            `).join('');
+
+            requestAnimationFrame(updateViewportHeight);
+        }
+
+        function setActiveTab(tab) {
+            activeTab = tab;
+            document.querySelectorAll('.seg-tab').forEach(btn => {
+                if (btn.dataset.tab === tab) {
+                    btn.className = 'seg-tab py-2.5 px-2 rounded-xl text-center transition-all bg-[#1b5e35] text-white shadow-sm';
+                } else {
+                    btn.className = 'seg-tab py-2.5 px-2 rounded-xl text-center transition-all text-[#5a6b60] hover:text-[#1b2432]';
+                }
+            });
+            renderRuleTiles();
+        }
+
+        function insertAndCopy(char, notify) {
+            editorEl.focus();
+            const start = editorEl.selectionStart;
+            const end = editorEl.selectionEnd;
+            const val = editorEl.value;
+            editorEl.value = val.slice(0, start) + char + val.slice(end);
+            const pos = start + char.length;
+            editorEl.setSelectionRange(pos, pos);
+            updateCharCount();
+            syncDownloadPreview();
+
+            copyToClipboard(char);
+            if (notify) {
+                showToast(`Đã chèn & sao chép "${char}"`);
+            }
+        }
+
+        function insertRandomSample() {
+            const sentence = SAMPLE_SENTENCES[sampleIndex % SAMPLE_SENTENCES.length];
+            sampleIndex++;
+            const current = editorEl.value;
+            const prefix = current.length > 0 && !current.endsWith(' ') && !current.endsWith('\n') ? ' ' : '';
+            insertAndCopy(prefix + sentence, false);
+            showToast('Đã chèn câu mẫu tiếng Êđê');
+        }
+
+        function copyEditorText() {
+            const text = editorEl.value;
+            if (!text.trim()) {
+                showToast('Khung gõ đang trống');
+                return;
+            }
+            copyToClipboard(text);
+            showToast('Đã sao chép văn bản!');
+        }
+
+        function copyToClipboard(str) {
+            const el = document.createElement('textarea');
+            el.value = str;
+            el.style.position = 'fixed';
+            el.style.opacity = '0';
+            document.body.appendChild(el);
+            el.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error(err);
+            }
+            document.body.removeChild(el);
+        }
+
+        function clearEditorText() {
+            if (!editorEl.value) return;
+            editorEl.value = '';
+            updateCharCount();
+            syncDownloadPreview();
+            editorEl.focus();
+            showToast('Đã xóa nội dung');
+        }
+
+        function updateCharCount() {
+            charCountEl.textContent = editorEl.value.length;
+        }
+
+        function syncDownloadPreview() {
+            const text = editorEl.value;
+            const previewEl = document.getElementById('download-preview');
+            const countEl = document.getElementById('download-char-count');
+            if (countEl) countEl.textContent = text.length;
+            if (previewEl) {
+                if (text.trim()) {
+                    previewEl.textContent = text;
+                    previewEl.classList.remove('text-[#94a3b8]');
+                    previewEl.classList.add('text-[#1b2432]');
+                } else {
+                    previewEl.textContent = '(Chưa có nội dung trong khung gõ)';
+                    previewEl.classList.remove('text-[#1b2432]');
+                    previewEl.classList.add('text-[#94a3b8]');
+                }
+            }
+            requestAnimationFrame(updateViewportHeight);
+        }
+
+        function getSanitizedFilename(ext) {
+            const input = document.getElementById('download-filename')?.value.trim() || 'van-ban-ede';
+            const clean = input.replace(/[\\/:*?"<>|]+/g, '-');
+            return `${clean}.${ext}`;
+        }
+
+        function triggerBlobDownload(content, filename, mimeType) {
+            const blob = new Blob(['\uFEFF' + content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function downloadTextFile(format) {
+            const text = editorEl.value;
+            if (!text.trim()) {
+                showToast('Hãy gõ hoặc chèn câu mẫu trước khi tải');
+                return;
+            }
+
+            if (format === 'txt') {
+                triggerBlobDownload(text, getSanitizedFilename('txt'), 'text/plain;charset=utf-8');
+                showToast('Đã tải tệp .TXT');
+            } else if (format === 'html') {
+                const htmlDoc = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Văn bản tiếng Êđê - EdeKey</title>
+<style>
+  body { font-family: "Times New Roman", Times, serif; font-size: 18pt; line-height: 1.7; margin: 40px; color: #1b2432; }
+</style>
+</head>
+<body>${escapeHTML(text).replace(/\n/g, '<br>')}</body>
+</html>`;
+                triggerBlobDownload(htmlDoc, getSanitizedFilename('html'), 'text/html;charset=utf-8');
+                showToast('Đã tải tệp .HTML');
+            }
+        }
+
+        function downloadRulesGuide() {
+            const lines = [
+                'BẢNG 18 QUY TẮC GÕ TIẾNG ÊĐÊ - EDEKEY',
+                '========================================',
+                ...EDE_RULES.map(r => `${r.seq.padEnd(4, ' ')} -> ${r.upper} / ${r.lower}   (${r.name})`)
+            ];
+            triggerBlobDownload(lines.join('\n'), 'quy-tac-go-ede.txt', 'text/plain;charset=utf-8');
+            showToast('Đã tải bảng quy tắc (.TXT)');
+        }
+
+        function setContactStatus(msg, type) {
+            const el = document.getElementById('contact-status');
+            if (!el) return;
+            el.textContent = msg;
+            el.classList.remove('hidden', 'bg-[#e8f1eb]', 'text-[#1b5e35]', 'bg-red-50', 'text-red-600');
+            if (type === 'success') {
+                el.classList.add('bg-[#e8f1eb]', 'text-[#1b5e35]');
+            } else if (type === 'error') {
+                el.classList.add('bg-red-50', 'text-red-600');
+            }
+            requestAnimationFrame(updateViewportHeight);
+        }
+
+        async function handleContactSubmit(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('contact-name');
+            const topicInput = document.getElementById('contact-topic');
+            const messageInput = document.getElementById('contact-message');
+            const submitBtn = document.getElementById('contact-submit-btn');
+            const submitText = document.getElementById('contact-submit-text');
+
+            const name = nameInput.value.trim();
+            const topic = topicInput.value;
+            const message = messageInput.value.trim();
+            if (!name || !message) return;
+
+            submitBtn.disabled = true;
+            submitText.textContent = 'Đang gửi...';
+
+            try {
+                const response = await fetch(FORMSUBMIT_AJAX_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        _subject: `[EdeKey] ${topic} - ${name}`,
+                        _template: 'box',
+                        'Họ và tên': name,
+                        'Chủ đề': topic,
+                        'Nội dung góp ý': message
+                    })
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data.success !== 'false') {
+                    nameInput.value = '';
+                    messageInput.value = '';
+                    setContactStatus(`Đã gửi góp ý trực tiếp đến ${CONTACT_EMAIL}! Cảm ơn bạn.`, 'success');
+                    showToast('Đã gửi góp ý đến tác giả!');
+                } else {
+                    throw new Error(data.message || 'Gửi thất bại');
+                }
+            } catch (err) {
+                setContactStatus(`Không gửi được lúc này. Vui lòng thử lại hoặc gửi trực tiếp tới ${CONTACT_EMAIL}.`, 'error');
+                showToast('Gửi thất bại, hãy thử lại');
+            } finally {
+                submitBtn.disabled = false;
+                submitText.textContent = 'Gửi';
+                requestAnimationFrame(updateViewportHeight);
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            toast.classList.remove('hidden', 'toast-enter');
+            void toast.offsetWidth;
+            toast.classList.add('toast-enter');
+
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.add('hidden'), 2200);
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, m => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[m]));
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
